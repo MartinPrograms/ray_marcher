@@ -10,6 +10,7 @@ public class ComputeShaderRenderer : MonoBehaviour
     private RenderTexture renderTexture = null;
     [SerializeField] private int xResolution = 256;
     [SerializeField] private int yResolution = 256;
+    [SerializeField] private bool overrideResolution = false;
     
     private ComputeBuffer _accumBuffer;
 
@@ -24,13 +25,24 @@ public class ComputeShaderRenderer : MonoBehaviour
     [SerializeField] private float specular = 0.5f; // 50% specular reflection
     [SerializeField] private float subsurface = 0.5f; // 50% subsurface scattering
     [SerializeField] private float _subsurfIterations = 4.0f;
+    [SerializeField] private float _maxDistance = 50.0f;
+    [SerializeField] private float _maxSteps = 100.0f;
 
     [Header("Debug")]
     [SerializeField] private bool _debugShowNormals = false;
     void Start()
     {
-        xResolution = Screen.width;
-        yResolution = Screen.height; 
+        if (overrideResolution)
+        {
+            var res = new Vector2Int(xResolution, (int)(yResolution * ((float)Screen.height / (float)Screen.width)));
+            xResolution = res.x;
+            yResolution = res.y;
+        }
+        else
+        {
+            xResolution = Screen.width;
+            yResolution = Screen.height;
+        }
         RenderPipelineManager.endContextRendering += OnEndContextRendering;
         gameObject.GetComponent<CameraFovChanger>().camera = _camera;
 
@@ -41,8 +53,23 @@ public class ComputeShaderRenderer : MonoBehaviour
 
     private float _time;
     private int _frameCount;
+    private bool _saveFrame = false;
     void Update()
     {
+        HandleMovement();
+
+        if (Input.GetKeyDown(KeyCode.R))
+        {
+            ResetAccumulation();
+        }
+        
+        if (Input.GetKeyDown(KeyCode.F2))
+        {
+            _saveFrame = true;
+        }
+
+        CheckScreenSize();
+        
         _time += Time.deltaTime;
         if (renderTexture == null)
         {
@@ -51,6 +78,24 @@ public class ComputeShaderRenderer : MonoBehaviour
             renderTexture.Create();
         }
 
+        RenderFrame();
+
+        if (_saveFrame)
+        {
+            _saveFrame = false;
+            bool oldDebug = _debugShowNormals;
+            _debugShowNormals = false;
+
+            RenderFrame();
+                SaveTextureToFileUtility.SaveRenderTextureToFile(renderTexture, "out.png", SaveTextureToFileUtility.SaveTextureFileFormat.PNG);
+            
+            _debugShowNormals = oldDebug;
+        }
+
+    }
+
+    private void RenderFrame()
+    {
         kernelHandle = computeShader.FindKernel("CSMain");
         computeShader.SetTexture(kernelHandle, "Result", renderTexture);
         computeShader.SetInt("_xResolution", xResolution);
@@ -64,8 +109,8 @@ public class ComputeShaderRenderer : MonoBehaviour
         computeShader.SetFloat("_cameraAspect", (float)yResolution / xResolution);
 
         computeShader.SetFloat("_epsilon", 0.003f);
-        computeShader.SetFloat("_maxDistance", 100f);
-        computeShader.SetFloat("_maxSteps", 1000f);
+        computeShader.SetFloat("_maxDistance", _maxDistance);
+        computeShader.SetFloat("_maxSteps", _maxSteps);
         
         computeShader.SetFloat("_roughness", roughness);
         computeShader.SetFloat("_specular", specular);
@@ -81,21 +126,13 @@ public class ComputeShaderRenderer : MonoBehaviour
         computeShader.SetBool("_debugShowNormals", _debugShowNormals);
         
         computeShader.Dispatch(kernelHandle, xResolution / 16, yResolution / 16, 1);
-
-        HandleMovement();
-
-        if (Input.GetKeyDown(KeyCode.R))
-        {
-            ResetAccumulation();
-        }
-
-        CheckScreenSize();
     }
 
     private void CheckScreenSize()
     {
         if (xResolution != Screen.width || yResolution != Screen.height)
         {
+            if (overrideResolution) return;
             xResolution = Screen.width;
             yResolution = Screen.height;
             renderTexture = new RenderTexture(xResolution, yResolution, 24);
@@ -176,8 +213,11 @@ public class ComputeShaderRenderer : MonoBehaviour
 
     void OnEndContextRendering(ScriptableRenderContext context, List<Camera> cameras)
     {
-        // Now to blit the render texture to the screen
-        Graphics.Blit(renderTexture, (RenderTexture)null);
+        if (!_saveFrame)
+        {
+            // Now to blit the render texture to the screen
+            Graphics.Blit(renderTexture, (RenderTexture)null);
+        }
     }
 
     void OnDestroy()

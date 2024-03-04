@@ -79,7 +79,7 @@ float light_de(float3 p){
     float radius = 0.5;
     p -= float3(0,-1,1);
     return length(p.yz) - radius;
-}       
+}
 
 float raymarch(float3 ro, float3 rd, out bool hitLight){
     float dO = 0.0;
