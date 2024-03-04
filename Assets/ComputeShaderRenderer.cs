@@ -27,6 +27,8 @@ public class ComputeShaderRenderer : MonoBehaviour
     [SerializeField] private float _subsurfIterations = 4.0f;
     [SerializeField] private float _maxDistance = 50.0f;
     [SerializeField] private float _maxSteps = 100.0f;
+    [SerializeField] private float _epsilon = 0.001f;
+    [SerializeField] private bool _debugDisableAccumulation = false;
 
     [Header("Debug")]
     [SerializeField] private bool _debugShowNormals = false;
@@ -108,7 +110,7 @@ public class ComputeShaderRenderer : MonoBehaviour
         computeShader.SetFloat("_cameraFov", MathHelper.Deg2Rad(_camera.fieldOfView));
         computeShader.SetFloat("_cameraAspect", (float)yResolution / xResolution);
 
-        computeShader.SetFloat("_epsilon", 0.003f);
+        computeShader.SetFloat("_epsilon", _epsilon);
         computeShader.SetFloat("_maxDistance", _maxDistance);
         computeShader.SetFloat("_maxSteps", _maxSteps);
         
@@ -122,6 +124,10 @@ public class ComputeShaderRenderer : MonoBehaviour
 
         _frameCount++;
         computeShader.SetFloat("_frame", _frameCount);
+        if (_debugDisableAccumulation)
+        {
+            _frameCount = 0;
+        }
         
         computeShader.SetBool("_debugShowNormals", _debugShowNormals);
         

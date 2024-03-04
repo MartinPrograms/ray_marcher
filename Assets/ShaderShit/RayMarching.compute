@@ -6,6 +6,8 @@
 // with cs.SetTexture
 RWTexture2D<float4> Result;
 
+struct 
+
 int _xResolution = 512;
 int _yResolution = 512;
 
@@ -35,6 +37,12 @@ float _subsurfIterations = 3; // Number of iterations
 RWStructuredBuffer<float3> _accumBuffer;
 float _frame = 0;
 
+float random(float p){
+    float seed = sin(_time) * 1000;
+    seed += sin(_frame * 3) * 1000;
+    return frac(sin(p * 12.9898 + 78.233) * 43758.5453);
+}
+
 float random(float3 p){
     float seed = sin(_time) * 1000;
     seed += sin(_frame * 3) * 1000;
@@ -51,6 +59,7 @@ float3 roughness(float3 ref, float3 normal){
     return result;
 }
 
+/*
 float de(float3 p){
     float scale = 1.0;
     float orb = 10000.0;
@@ -74,10 +83,36 @@ float de(float3 p){
 
     return 0.5 * dmi / scale;
 }
+*/
+
+float PI = 3.14159265359;
+
+
+
+float de(float3 p) {
+    p = p.xzy;
+    float3 cSize = float3(1, 1, 1.3);
+    float scale = 1.0;
+
+    for (int i = 0; i < 12; i++) {
+        p = 2.0 * clamp(p, -cSize, cSize) - p;
+        float r2 = dot(p, p);
+        float k = max((2.0)/(r2), 0.027);
+        p *= k;
+        scale *= k;
+    }
+
+    float l = length(p.xy);
+    float rxy = l - 4.0;
+    float n = l * p.z;
+
+    rxy = max(rxy, -(n) / 4.0);
+    return (rxy) / abs(scale);
+}
 
 float light_de(float3 p){
     float radius = 0.5;
-    p -= float3(0,-1,1);
+    p -= float3(0,-1.25,1);
     return length(p.yz) - radius;
 }
 
@@ -95,6 +130,7 @@ float raymarch(float3 ro, float3 rd, out bool hitLight){
 
         dO += dS;
         p += dS * rd;
+
 
         if (dL < _epsilon){
             hitLight = true;
@@ -168,8 +204,8 @@ float3 ray_trace(float3 ro, float3 rd, float bounces){
         float3 ref = reflect(rd, normal);
         float3 rough = roughness(ref, normal);
 
+        // Specular.
         {
-            // Specular.
             bool HL = false;
             float3 n = float3(0, 0, 0);
             float3 i = float3(0, 0, 0);
@@ -179,9 +215,9 @@ float3 ray_trace(float3 ro, float3 rd, float bounces){
                 result += transmittance * attenuation * out_col * _specular;
             }
         }
-
+        
+        // Subsurface scattering.
         {
-            // Subsurface scattering.
             float3 sub_result = float3(0, 0, 0);
 
             if (_subsurfStrength != 0)
@@ -190,7 +226,10 @@ float3 ray_trace(float3 ro, float3 rd, float bounces){
                 float3 i = impact;
                 for (int j = 0; j < _subsurfIterations; j++){
                     bool HL = false;
-                    float3 random_dir = normalize(float3(random(i), random(i + float3(1, 0, 0)), random(i + float3(0, 1, 0))));
+                    float random_dir_x = random(i.x + _time * 1.23) - 0.5;
+                    float random_dir_y = random(i.y + _time * 2.34) - 0.5;
+                    float random_dir_z = random(i.z + _time * 3.45) - 0.5;
+                    float3 random_dir = normalize(float3(random_dir_x, random_dir_y, random_dir_z));
                     float3 out_col = march(i - n * 0.02, random_dir, HL, n, i);
                     if (HL){
                         sub_result += out_col * attenuation;
@@ -233,6 +272,12 @@ void CSMain (uint3 id : SV_DispatchThreadID)
         fin_color = GetNormal(ro + raymarch(ro, rd, hitLight) * rd) * 0.5 + 0.5;
     }else
     {
+        float3 rand_rd = rd;
+        rand_rd.x += random(frac(rd.x + _time * 1.23) - 0.5);
+        rand_rd.y += random(frac(rd.y + _time * 2.34) - 0.5);
+        rand_rd.z += random(frac(rd.z + _time * 3.45) - 0.5);
+
+        rd = normalize(rd + rand_rd * 0.001);
         fin_color = ray_trace(ro, rd, 8);
     }
     float3 accum = _accumBuffer[id.x + id.y * _xResolution];
