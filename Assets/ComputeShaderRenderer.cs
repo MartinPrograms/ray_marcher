@@ -22,7 +22,11 @@ public class ComputeShaderRenderer : MonoBehaviour
     [SerializeField] private Vector3 diffuse = new Vector3(0.9f, 0.4f, 0.4f);
     [SerializeField] private float roughness = 0.5f;
     [SerializeField] private float specular = 0.5f; // 50% specular reflection
+    [SerializeField] private float subsurface = 0.5f; // 50% subsurface scattering
+    [SerializeField] private float _subsurfIterations = 4.0f;
 
+    [Header("Debug")]
+    [SerializeField] private bool _debugShowNormals = false;
     void Start()
     {
         xResolution = Screen.width;
@@ -66,11 +70,15 @@ public class ComputeShaderRenderer : MonoBehaviour
         computeShader.SetFloat("_roughness", roughness);
         computeShader.SetFloat("_specular", specular);
         computeShader.SetVector("diffuse", diffuse);
+        computeShader.SetFloat("_subsurfStrength", subsurface);
+        computeShader.SetFloat("_subsurfIterations", _subsurfIterations);
 
         computeShader.SetFloat("_time", _time);
 
         _frameCount++;
         computeShader.SetFloat("_frame", _frameCount);
+        
+        computeShader.SetBool("_debugShowNormals", _debugShowNormals);
         
         computeShader.Dispatch(kernelHandle, xResolution / 16, yResolution / 16, 1);
 

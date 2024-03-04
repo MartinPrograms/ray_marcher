@@ -9,6 +9,8 @@ RWTexture2D<float4> Result;
 int _xResolution = 512;
 int _yResolution = 512;
 
+bool _debugShowNormals = false;
+
 float _epsilon = 0.0001;
 float _maxDistance = 100.0;
 float _maxSteps = 100;
@@ -24,6 +26,11 @@ float _time = 0.0;
 float _roughness = 1;
 float _specular = 0.5;
 float3 diffuse = float3(0.9, 0.4, 0.5);
+
+// Subsurf settings:
+float _subsurfScale = 0.1; // Distance per step
+float _subsurfStrength = 0.5; // Strength of the effect
+float _subsurfIterations = 3; // Number of iterations
 
 RWStructuredBuffer<float3> _accumBuffer;
 float _frame = 0;
@@ -172,6 +179,27 @@ float3 ray_trace(float3 ro, float3 rd, float bounces){
                 result += transmittance * attenuation * out_col * _specular;
             }
         }
+
+        {
+            // Subsurface scattering.
+            float3 sub_result = float3(0, 0, 0);
+
+            if (_subsurfStrength != 0)
+            {
+                float3 n = normal;
+                float3 i = impact;
+                for (int j = 0; j < _subsurfIterations; j++){
+                    bool HL = false;
+                    float3 random_dir = normalize(float3(random(i), random(i + float3(1, 0, 0)), random(i + float3(0, 1, 0))));
+                    float3 out_col = march(i - n * 0.02, random_dir, HL, n, i);
+                    if (HL){
+                        sub_result += out_col * attenuation;
+                    }
+                }
+                result += transmittance * attenuation * sub_result * _subsurfStrength;
+
+            }
+        }
         
         rd = normalize(lerp(ref, rough, _roughness));
         ro = impact + normal * 0.01;
@@ -196,8 +224,17 @@ void CSMain (uint3 id : SV_DispatchThreadID)
     float3 rd = normalize(_cameraForward - x * _cameraRight + y * _cameraUp);
     float3 ro = _cameraPosition;
 
-    float3 fin_color = ray_trace(ro, rd, 8);
-    
+    float3 fin_color =float3(0,0,0) ;//ray_trace(ro, rd, 8);
+    if (_debugShowNormals)
+    {
+        float3 normal = float3(0, 0, 0);
+        float3 impact = float3(0, 0, 0);
+        bool hitLight = false;
+        fin_color = GetNormal(ro + raymarch(ro, rd, hitLight) * rd) * 0.5 + 0.5;
+    }else
+    {
+        fin_color = ray_trace(ro, rd, 8);
+    }
     float3 accum = _accumBuffer[id.x + id.y * _xResolution];
 
     if (_frame == 0){
