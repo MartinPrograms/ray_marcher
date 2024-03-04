@@ -10,6 +10,7 @@ public class CameraFovChanger : MonoBehaviour
     [SerializeField] private float target_fov;
 
     public CustomCamera camera;
+    public ComputeShaderRenderer renderer;
 
     void Update()
     {
@@ -25,11 +26,14 @@ public class CameraFovChanger : MonoBehaviour
             target_fov = Mathf.Clamp(fov - (scroll * 100), 1.0f, 100.0f);
         }
 
-        if (current_fov != target_fov)
+        float difference = Mathf.Abs(target_fov - current_fov);
+        
+        if (difference > 0.1f)
         {
             current_fov = EaseOut(current_fov, target_fov, change_speed * Time.deltaTime);
             camera.fieldOfView = current_fov;
             fov = current_fov;
+            renderer.ResetAccumulation();
         }
     }
 

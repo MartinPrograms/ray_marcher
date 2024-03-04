@@ -10,12 +10,18 @@ public class ComputeShaderRenderer : MonoBehaviour
     private RenderTexture renderTexture = null;
     [SerializeField] private int xResolution = 256;
     [SerializeField] private int yResolution = 256;
-
+    
     private ComputeBuffer _accumBuffer;
 
     public CustomCamera _camera;//new CustomCamera(new Vector3(0, 0, -3),new Vector3(0,0,1), 67);
+    [SerializeField] private float rotationSpeed = 1.0f;
 
     int kernelHandle;
+    
+    [Header("Render settings")]
+    [SerializeField] private Vector3 diffuse = new Vector3(0.9f, 0.4f, 0.4f);
+    [SerializeField] private float roughness = 0.5f;
+    [SerializeField] private float specular = 0.5f; // 50% specular reflection
 
     void Start()
     {
@@ -56,6 +62,10 @@ public class ComputeShaderRenderer : MonoBehaviour
         computeShader.SetFloat("_epsilon", 0.003f);
         computeShader.SetFloat("_maxDistance", 100f);
         computeShader.SetFloat("_maxSteps", 1000f);
+        
+        computeShader.SetFloat("_roughness", roughness);
+        computeShader.SetFloat("_specular", specular);
+        computeShader.SetVector("diffuse", diffuse);
 
         computeShader.SetFloat("_time", _time);
 
@@ -93,16 +103,14 @@ public class ComputeShaderRenderer : MonoBehaviour
         }
     }
 
-    void ResetAccumulation()
+    public void ResetAccumulation()
     {
         //_accumBuffer.SetData(new float[xResolution * yResolution * 3]);
         _frameCount = 0;
     }
 
     private bool lockMouse = false;
-
-    [SerializeField] private float rotationSpeed = 1.0f;
-
+    
     private void HandleMovement()
     {
         if (Input.GetKeyDown(KeyCode.Escape))

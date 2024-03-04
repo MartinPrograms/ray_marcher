@@ -38,7 +38,7 @@ RenderSettings:
   m_ReflectionIntensity: 1
   m_CustomReflection: {fileID: 0}
   m_Sun: {fileID: 0}
-  m_IndirectSpecularColor: {r: 262.38358, g: 325.10843, b: 430.30963, a: 1}
+  m_IndirectSpecularColor: {r: 262.30203, g: 324.99054, b: 430.14313, a: 1}
   m_UseRadianceAmbientProbe: 0
 --- !u!157 &3
 LightmapSettings:
@@ -381,6 +381,7 @@ MonoBehaviour:
   current_fov: 60
   target_fov: 60
   camera: {fileID: 1823688471}
+  renderer: {fileID: 1823688469}
 --- !u!114 &1823688471
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -393,7 +394,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 067a13d11c2a7854a9e83976668df956, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  position: {x: 0, y: 0, z: -3}
+  position: {x: -1, y: -1, z: -3}
   forward: {x: 0, y: 0, z: 1}
   up: {x: 0, y: 0, z: 0}
   right: {x: 0, y: 0, z: 0}

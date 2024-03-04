@@ -22,6 +22,8 @@ float _cameraAspect = 1.0;
 float _time = 0.0;
 
 float _roughness = 1;
+float _specular = 0.5;
+float3 diffuse = float3(0.9, 0.4, 0.5);
 
 RWStructuredBuffer<float3> _accumBuffer;
 float _frame = 0;
@@ -38,7 +40,8 @@ float3 roughness(float3 ref, float3 normal){
     float r1 = 2 * 3.14159265359 * random(ref);
     float r2 = random(ref);
     float r2s = sqrt(r2);
-    return u * cos(r1) * r2s + v * sin(r1) * r2s + ref * sqrt(1 - r2);
+    float3 result = normalize(u * cos(r1) * r2s + v * sin(r1) * r2s + ref * sqrt(1 - r2));
+    return result;
 }
 
 float de(float3 p){
@@ -140,7 +143,6 @@ float3 ray_trace(float3 ro, float3 rd, float bounces){
     float3 impact = float3(0, 0, 0);
     float transmittance = 1.0;
     float3 attenuation = float3(1, 1, 1);
-    float3 diffuse = float3(0.9, 0.4, 0.5);
 
     bool hitLight = false;
     for (int i = 0; i < bounces; i++){
@@ -157,7 +159,21 @@ float3 ray_trace(float3 ro, float3 rd, float bounces){
 
         normal = GetNormal(impact);
         float3 ref = reflect(rd, normal);
-        rd = roughness(ref, normal);
+        float3 rough = roughness(ref, normal);
+
+        {
+            // Specular.
+            bool HL = false;
+            float3 n = float3(0, 0, 0);
+            float3 i = float3(0, 0, 0);
+            float3 out_col = march(impact + normal * 0.01, ref, HL, n, i);
+            if (HL)
+            {
+                result += transmittance * attenuation * out_col * _specular;
+            }
+        }
+        
+        rd = normalize(lerp(ref, rough, _roughness));
         ro = impact + normal * 0.01;
 
         if (transmittance < 0.01){
